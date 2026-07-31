@@ -1,0 +1,580 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Xóa giao diện người dùng cũ nếu chạy lại tập lệnh để tránh trùng lặp
+if CoreGui:FindFirstChild("HitboxPillUI") then
+    CoreGui.HitboxPillUI:Destroy()
+end
+
+-- ================= CẤU HÌNH ================= --
+local HitboxSettings = {
+    Enabled = false,
+    Size = 15,
+    Transparency = 0.7,
+    Color = Color3.fromRGB(255, 50, 50)
+}
+
+local ESPSettings = {
+    Enabled = false,
+    BoxColor = Color3.fromRGB(0, 255, 255),
+    TextColor = Color3.fromRGB(255, 255, 255)
+}
+
+local SpeedSettings = {
+    Enabled = false,
+    Value = 50 -- Tốc độ mặc định khi bật
+}
+
+local NoclipSettings = {
+    Enabled = false
+}
+
+local InvisibleSettings = {
+    Enabled = false
+}
+
+local ghostFolder = nil
+local ghostPartsMapping = {}
+
+-- ================= KHỞI TẠO GIAO DIỆN ================= --
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "HitboxPillUI"
+ScreenGui.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 300, 0, 325)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -162)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Active = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 20)
+UICorner.Parent = MainFrame
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(80, 80, 80)
+UIStroke.Thickness = 1.5
+UIStroke.Transparency = 0.5
+UIStroke.Parent = MainFrame
+
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Size = UDim2.new(1, 0, 1, 0)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Position = UDim2.new(0, 0, 0, 2)
+Title.BackgroundTransparency = 1
+Title.Text = "Hitbox, ESP, Speed, Noclip & Invi"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 15
+Title.Parent = ContentFrame
+
+-- Nút Bật/Tắt Hitbox
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 260, 0, 30)
+ToggleBtn.Position = UDim2.new(0, 20, 0, 35)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleBtn.Text = "Hitbox: TẮT"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextSize = 14
+ToggleBtn.Parent = ContentFrame
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+
+-- Ô nhập kích thước Hitbox
+local SizeInput = Instance.new("TextBox")
+SizeInput.Size = UDim2.new(0, 260, 0, 30)
+SizeInput.Position = UDim2.new(0, 20, 0, 70)
+SizeInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SizeInput.Text = "15"
+SizeInput.PlaceholderText = "Kích thước Hitbox (VD: 15)"
+SizeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+SizeInput.Font = Enum.Font.Gotham
+SizeInput.TextSize = 13
+SizeInput.Parent = ContentFrame
+Instance.new("UICorner", SizeInput).CornerRadius = UDim.new(0, 6)
+
+-- Nút Bật/Tắt ESP
+local ToggleESPBtn = Instance.new("TextButton")
+ToggleESPBtn.Size = UDim2.new(0, 260, 0, 30)
+ToggleESPBtn.Position = UDim2.new(0, 20, 0, 105)
+ToggleESPBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleESPBtn.Text = "Định vị ESP: TẮT"
+ToggleESPBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ToggleESPBtn.Font = Enum.Font.GothamBold
+ToggleESPBtn.TextSize = 14
+ToggleESPBtn.Parent = ContentFrame
+Instance.new("UICorner", ToggleESPBtn).CornerRadius = UDim.new(0, 6)
+
+-- Nút Bật/Tắt Tốc Độ
+local ToggleSpeedBtn = Instance.new("TextButton")
+ToggleSpeedBtn.Size = UDim2.new(0, 260, 0, 30)
+ToggleSpeedBtn.Position = UDim2.new(0, 20, 0, 140)
+ToggleSpeedBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleSpeedBtn.Text = "Chạy nhanh: TẮT"
+ToggleSpeedBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ToggleSpeedBtn.Font = Enum.Font.GothamBold
+ToggleSpeedBtn.TextSize = 14
+ToggleSpeedBtn.Parent = ContentFrame
+Instance.new("UICorner", ToggleSpeedBtn).CornerRadius = UDim.new(0, 6)
+
+-- Ô nhập Tốc Độ
+local SpeedInput = Instance.new("TextBox")
+SpeedInput.Size = UDim2.new(0, 260, 0, 30)
+SpeedInput.Position = UDim2.new(0, 20, 0, 175)
+SpeedInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SpeedInput.Text = "50"
+SpeedInput.PlaceholderText = "Tốc độ chạy (Mặc định: 16)"
+SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedInput.Font = Enum.Font.Gotham
+SpeedInput.TextSize = 13
+SpeedInput.Parent = ContentFrame
+Instance.new("UICorner", SpeedInput).CornerRadius = UDim.new(0, 6)
+
+-- Nút Bật/Tắt Xuyên Tường
+local ToggleNoclipBtn = Instance.new("TextButton")
+ToggleNoclipBtn.Size = UDim2.new(0, 260, 0, 30)
+ToggleNoclipBtn.Position = UDim2.new(0, 20, 0, 210)
+ToggleNoclipBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleNoclipBtn.Text = "Đi xuyên tường: TẮT"
+ToggleNoclipBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ToggleNoclipBtn.Font = Enum.Font.GothamBold
+ToggleNoclipBtn.TextSize = 14
+ToggleNoclipBtn.Parent = ContentFrame
+Instance.new("UICorner", ToggleNoclipBtn).CornerRadius = UDim.new(0, 6)
+
+-- Nút Bật/Tắt Tàng Hình
+local ToggleInvisibleBtn = Instance.new("TextButton")
+ToggleInvisibleBtn.Size = UDim2.new(0, 260, 0, 30)
+ToggleInvisibleBtn.Position = UDim2.new(0, 20, 0, 245)
+ToggleInvisibleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleInvisibleBtn.Text = "Tàng hình: TẮT"
+ToggleInvisibleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ToggleInvisibleBtn.Font = Enum.Font.GothamBold
+ToggleInvisibleBtn.TextSize = 14
+ToggleInvisibleBtn.Parent = ContentFrame
+Instance.new("UICorner", ToggleInvisibleBtn).CornerRadius = UDim.new(0, 6)
+
+-- Nút Thu Nhỏ
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 260, 0, 30)
+MinimizeBtn.Position = UDim2.new(0, 20, 0, 280)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+MinimizeBtn.Text = "Thu nhỏ Menu"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.TextSize = 14
+MinimizeBtn.Parent = ContentFrame
+Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 6)
+
+-- Chữ khi thu nhỏ
+local PillText = Instance.new("TextLabel")
+PillText.Size = UDim2.new(1, 0, 1, 0)
+PillText.BackgroundTransparency = 1
+PillText.Text = " MỞ MENU "
+PillText.TextColor3 = Color3.fromRGB(255, 255, 255)
+PillText.Font = Enum.Font.GothamBold
+PillText.TextSize = 16
+PillText.Visible = false
+PillText.Parent = MainFrame
+
+local PillClick = Instance.new("TextButton")
+PillClick.Size = UDim2.new(1, 0, 1, 0)
+PillClick.BackgroundTransparency = 1
+PillClick.Text = ""
+PillClick.Visible = false
+PillClick.Parent = MainFrame
+
+-- ================= HỆ THỐNG KÉO THẢ (DRAG SYSTEM) ================= --
+local dragging = false
+local dragStart, startPos
+local isDraggingPill = false
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        isDraggingPill = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        if delta.Magnitude > 5 then
+            isDraggingPill = true
+        end
+        
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- ================= CÁC HÀM XỬ LÝ ================= --
+
+local function ResetHitboxes()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
+            hrp.Size = Vector3.new(2, 2, 1)
+            hrp.Transparency = 1
+            hrp.Material = Enum.Material.Plastic
+        end
+    end
+end
+
+local function ClearESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            local hl = player.Character:FindFirstChild("ESPHighlight")
+            if hl then hl:Destroy() end
+            
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and hrp:FindFirstChild("ESPText") then
+                hrp.ESPText:Destroy()
+            end
+        end
+    end
+end
+
+-- ================= GIAO DIỆN LOGIC ================= --
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    HitboxSettings.Enabled = not HitboxSettings.Enabled
+    if HitboxSettings.Enabled then
+        ToggleBtn.Text = "Hitbox: ĐANG BẬT"
+        ToggleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        ToggleBtn.Text = "Hitbox: TẮT"
+        ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        ResetHitboxes()
+    end
+end)
+
+SizeInput.FocusLost:Connect(function()
+    local num = tonumber(SizeInput.Text)
+    if num then
+        HitboxSettings.Size = num
+    else
+        SizeInput.Text = tostring(HitboxSettings.Size)
+    end
+end)
+
+ToggleESPBtn.MouseButton1Click:Connect(function()
+    ESPSettings.Enabled = not ESPSettings.Enabled
+    if ESPSettings.Enabled then
+        ToggleESPBtn.Text = "Định vị ESP: ĐANG BẬT"
+        ToggleESPBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        ToggleESPBtn.Text = "Định vị ESP: TẮT"
+        ToggleESPBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        ClearESP()
+    end
+end)
+
+ToggleSpeedBtn.MouseButton1Click:Connect(function()
+    SpeedSettings.Enabled = not SpeedSettings.Enabled
+    if SpeedSettings.Enabled then
+        ToggleSpeedBtn.Text = "Chạy nhanh: ĐANG BẬT"
+        ToggleSpeedBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        ToggleSpeedBtn.Text = "Chạy nhanh: TẮT"
+        ToggleSpeedBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16 
+        end
+    end
+end)
+
+SpeedInput.FocusLost:Connect(function()
+    local num = tonumber(SpeedInput.Text)
+    if num then
+        SpeedSettings.Value = num
+    else
+        SpeedInput.Text = tostring(SpeedSettings.Value)
+    end
+end)
+
+ToggleNoclipBtn.MouseButton1Click:Connect(function()
+    NoclipSettings.Enabled = not NoclipSettings.Enabled
+    if NoclipSettings.Enabled then
+        ToggleNoclipBtn.Text = "Đi xuyên tường: ĐANG BẬT"
+        ToggleNoclipBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        ToggleNoclipBtn.Text = "Đi xuyên tường: TẮT"
+        ToggleNoclipBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end)
+
+-- Logic Tàng Hình (Ẩn với người khác, tạo hiệu ứng bóng trắng mờ cho riêng mình)
+ToggleInvisibleBtn.MouseButton1Click:Connect(function()
+    InvisibleSettings.Enabled = not InvisibleSettings.Enabled
+    if InvisibleSettings.Enabled then
+        ToggleInvisibleBtn.Text = "Tàng hình: ĐANG BẬT"
+        ToggleInvisibleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        
+        ghostPartsMapping = {}
+        if ghostFolder then ghostFolder:Destroy() end
+        
+        -- Tạo thư mục chứa nhân vật giả lập chỉ hiển thị trên máy của bạn (qua Camera)
+        ghostFolder = Instance.new("Folder")
+        ghostFolder.Name = "LocalGhostCharacter"
+        ghostFolder.Parent = workspace.CurrentCamera
+        
+        if LocalPlayer.Character then
+            for _, obj in pairs(LocalPlayer.Character:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+                    local clone = obj:Clone()
+                    clone.Parent = ghostFolder
+                    for _, child in pairs(clone:GetChildren()) do
+                        if not child:IsA("SpecialMesh") and not child:IsA("FileMesh") then
+                            child:Destroy()
+                        end
+                    end
+                    clone.Color = Color3.fromRGB(255, 255, 255) -- Màu trắng mờ
+                    clone.Material = Enum.Material.Neon -- Phát sáng nhẹ giúp dễ nhìn
+                    clone.Transparency = 0.5 -- Mờ trong suốt
+                    clone.CanCollide = false
+                    clone.Anchored = true
+                    
+                    ghostPartsMapping[obj] = clone
+                end
+            end
+        end
+    else
+        ToggleInvisibleBtn.Text = "Tàng hình: TẮT"
+        ToggleInvisibleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        
+        if ghostFolder then
+            ghostFolder:Destroy()
+            ghostFolder = nil
+        end
+        ghostPartsMapping = {}
+        
+        if LocalPlayer.Character then
+            for _, obj in pairs(LocalPlayer.Character:GetDescendants()) do
+                if obj:IsA("BasePart") or obj:IsA("Decal") then
+                    obj.Transparency = 0
+                end
+            end
+        end
+    end
+end)
+
+-- Reset khi nhân vật chết hoặc hồi sinh
+LocalPlayer.CharacterAdded:Connect(function()
+    InvisibleSettings.Enabled = false
+    ToggleInvisibleBtn.Text = "Tàng hình: TẮT"
+    ToggleInvisibleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    if ghostFolder then
+        ghostFolder:Destroy()
+        ghostFolder = nil
+    end
+    ghostPartsMapping = {}
+end)
+
+-- ================= HIỆU ỨNG ĐÓNG MỞ MENU (TWEEN ANIMATION) ================= --
+local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+MinimizeBtn.MouseButton1Click:Connect(function()
+    ContentFrame.Visible = false
+    
+    local shrinkTween = TweenService:Create(MainFrame, tweenInfo, {
+        Size = UDim2.new(0, 140, 0, 40)
+    })
+    shrinkTween:Play()
+    shrinkTween.Completed:Wait()
+    
+    PillText.Visible = true
+    PillClick.Visible = true
+end)
+
+PillClick.MouseButton1Click:Connect(function()
+    if isDraggingPill then return end
+    
+    PillText.Visible = false
+    PillClick.Visible = false
+    
+    local expandTween = TweenService:Create(MainFrame, tweenInfo, {
+        Size = UDim2.new(0, 300, 0, 325),
+        Position = UDim2.new(0.5, -150, 0.5, -162)
+    })
+    expandTween:Play()
+    expandTween.Completed:Wait()
+    
+    ContentFrame.Visible = true
+end)
+
+-- ================= VÒNG LẶP CHÍNH ================= --
+
+-- Vòng lặp Hitbox (0.5 giây/lần)
+task.spawn(function()
+    while task.wait(0.5) do
+        if HitboxSettings.Enabled then
+            pcall(function()
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character then
+                        local humanoid = player.Character:FindFirstChild("Humanoid")
+                        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                        
+                        if humanoid and humanoid.Health > 0 and hrp then
+                            hrp.Size = Vector3.new(HitboxSettings.Size, HitboxSettings.Size, HitboxSettings.Size)
+                            pcall(function()
+                                hrp.Transparency = HitboxSettings.Transparency
+                                hrp.Color = HitboxSettings.Color
+                                hrp.Material = Enum.Material.Neon
+                            end)
+                            hrp.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- Vòng lặp Noclip (Đi xuyên tường)
+RunService.Stepped:Connect(function()
+    if NoclipSettings.Enabled then
+        pcall(function()
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- Vòng lặp RenderStepped: ESP, Speed và Tàng Hình
+RunService.RenderStepped:Connect(function()
+    -- Logic Tàng Hình (Ẩn nhân vật thật với người khác, cập nhật bóng nhân vật giả cho bạn)
+    if InvisibleSettings.Enabled then
+        pcall(function()
+            if LocalPlayer.Character then
+                for _, obj in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if obj:IsA("BasePart") or obj:IsA("Decal") then
+                        obj.Transparency = 1
+                    end
+                end
+                
+                local cam = workspace.CurrentCamera
+                if cam then
+                    for realPart, ghostPart in pairs(ghostPartsMapping) do
+                        if realPart and realPart.Parent and ghostPart and ghostPart.Parent then
+                            ghostPart.CFrame = cam.CFrame:Inverse() * realPart.CFrame
+                        else
+                            ghostPartsMapping[realPart] = nil
+                            if ghostPart then ghostPart:Destroy() end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    -- Logic Speed
+    if SpeedSettings.Enabled then
+        pcall(function()
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                local hum = LocalPlayer.Character.Humanoid
+                if hum.Health > 0 then
+                    hum.WalkSpeed = SpeedSettings.Value
+                end
+            end
+        end)
+    end
+
+    -- Logic ESP
+    if ESPSettings.Enabled then
+        pcall(function()
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    local char = player.Character
+                    local hum = char:FindFirstChild("Humanoid")
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    
+                    if hum and hum.Health > 0 and hrp then
+                        local highlight = char:FindFirstChild("ESPHighlight")
+                        if not highlight then
+                            highlight = Instance.new("Highlight")
+                            highlight.Name = "ESPHighlight"
+                            highlight.FillTransparency = 0.6
+                            highlight.FillColor = ESPSettings.BoxColor
+                            highlight.OutlineColor = ESPSettings.BoxColor
+                            highlight.Parent = char
+                        end
+                        
+                        local espText = hrp:FindFirstChild("ESPText")
+                        if not espText then
+                            espText = Instance.new("BillboardGui")
+                            espText.Name = "ESPText"
+                            espText.Size = UDim2.new(0, 200, 0, 50)
+                            espText.StudsOffset = Vector3.new(0, 3, 0)
+                            espText.AlwaysOnTop = true
+                            
+                            local label = Instance.new("TextLabel")
+                            label.Size = UDim2.new(1, 0, 1, 0)
+                            label.BackgroundTransparency = 1
+                            label.TextColor3 = ESPSettings.TextColor
+                            label.TextStrokeTransparency = 0
+                            label.Font = Enum.Font.GothamBold
+                            label.TextSize = 13
+                            label.Parent = espText
+                            
+                            espText.Parent = hrp
+                        end
+                        
+                        local action = "Đứng yên"
+                        if hum.Sit then
+                            action = "Đang ngồi"
+                        elseif hum:GetState() == Enum.HumanoidStateType.Freefall or hum:GetState() == Enum.HumanoidStateType.Jumping then
+                            action = "Đang nhảy/rơi"
+                        elseif hum.MoveDirection.Magnitude > 0 then
+                            action = "Đang di chuyển"
+                        end
+                        
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        local toolName = tool and tool.Name or "Tay không"
+                        
+                        espText.TextLabel.Text = string.format("[%s]\n%s\nCầm: %s", player.Name, action, toolName)
+                    else
+                        if char:FindFirstChild("ESPHighlight") then char.ESPHighlight:Destroy() end
+                        if hrp and hrp:FindFirstChild("ESPText") then hrp.ESPText:Destroy() end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- Xóa ESP khi người chơi thoát
+Players.PlayerRemoving:Connect(function(player)
+    if player.Character then
+        local hl = player.Character:FindFirstChild("ESPHighlight")
+        if hl then hl:Destroy() end
+    end
+end)
